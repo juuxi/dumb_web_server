@@ -71,22 +71,22 @@ void* func2(void* arg) {
             std::cout << "Сообщение\n" << first_ent << "Принято" << std::endl;
             std::string http_method = first_ent.substr(0, first_ent.find(' '));
             char send_msg[256];
+            std::string body;
+            std::string status_code;
             if (http_method == "GET"); {
-                sprintf(send_msg,
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: 18\r\n"
-                    "\r\n"
-                    "Hello from server\n");
+                body = "Hello from server\n";
+                status_code = "200 OK";
             }
             if (http_method == "POST") {
-                sprintf(send_msg,
-                    "HTTP/1.1 403 Forbidden\r\n"
-                    "Content-Type: text/plain\r\n"
-                    "Content-Length: 33\r\n"
-                    "\r\n"
-                    "You're not allowed to watch this\n");
+                body = "You're not allowed to watch this\n";
+                status_code = "403 Forbidden";
             }
+            sprintf(send_msg,
+                "HTTP/1.1 %s\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: %d\r\n"
+                "\r\n"
+                "%s", status_code.c_str(), int(body.size()), body.c_str());
 
             int rv = send(client_fd, send_msg, strlen(send_msg), 0);
             if (rv == -1) {
