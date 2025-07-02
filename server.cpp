@@ -61,39 +61,29 @@ void* func2(void* arg) {
     printf("поток обработки начал работу\n");
 
     while (flag_process == 0) {
-        int i = 0;
         pthread_mutex_lock(&mutex);
         if (!q.empty()) {
             std::string first_ent = q.front();
             q.pop();
             pthread_mutex_unlock(&mutex);
 
-            const char* iter = first_ent.c_str();
-            while (*iter && !isdigit(*iter)) iter++;
-            while (isdigit(*iter)) {
-                i = i * 10 + (*iter - '0');
-                iter++;
-            }
-
-            printf("Сообщение %d принято\n", i);
+            printf("Сообщение %s принято\n", first_ent);
 
             char send_msg[256];
             sprintf(send_msg,
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
-                "Content-Length: 13\r\n"
+                "Content-Length: 18\r\n"
                 "\r\n"
-                "Hello from server");
+                "Hello from server\n");
 
             int rv = send(client_fd, send_msg, strlen(send_msg), 0);
             if (rv == -1) {
                 perror("send");
-            } else {
-                printf("Ответ на сообщение %d отправлен\n", i);
             }
         } else {
             pthread_mutex_unlock(&mutex);
-            usleep(100000); // Sleep briefly to avoid busy waiting
+            usleep(100000);
         }
     }
     close(client_fd);
@@ -107,10 +97,8 @@ void* func3(void*) {
         socklen_t len = sizeof(addr);
         int client_fd = accept(listen_sock, (struct sockaddr*)&addr, &len);
         if (client_fd == -1) {
-            perror("accept");
             sleep(1);
         } else {
-            // Allocate new socket descriptors for each thread
             int* client_fd1 = (int*)malloc(sizeof(int));
             int* client_fd2 = (int*)malloc(sizeof(int));
             *client_fd1 = client_fd;
@@ -118,7 +106,6 @@ void* func3(void*) {
 
             pthread_create(&id1, NULL, func1, client_fd1);
             pthread_create(&id2, NULL, func2, client_fd2);
-            break; // Remove this break if you want to support multiple connections
         }
     }
     printf("поток ожидания соединений закончил работу\n");
