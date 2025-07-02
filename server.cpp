@@ -18,6 +18,7 @@
 #include <netdb.h>
 #include <queue>
 #include <string>
+#include <iostream>
 
 
 int flag_rcv = 0;
@@ -37,7 +38,7 @@ void* func1(void* arg) {
 
     printf("поток приема начал работу\n");
     while (flag_rcv == 0) {
-        char rcv_msg[50];
+        char rcv_msg[256];
         int rv = recv(client_fd, rcv_msg, sizeof(rcv_msg), 0);
         if (rv == -1) {
             perror("receive");
@@ -67,15 +68,25 @@ void* func2(void* arg) {
             q.pop();
             pthread_mutex_unlock(&mutex);
 
-            printf("Сообщение %s принято\n", first_ent);
-
+            std::cout << "Сообщение\n" << first_ent << "Принято" << std::endl;
+            std::string http_method = first_ent.substr(0, first_ent.find(' '));
             char send_msg[256];
-            sprintf(send_msg,
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: text/plain\r\n"
-                "Content-Length: 18\r\n"
-                "\r\n"
-                "Hello from server\n");
+            if (http_method == "GET"); {
+                sprintf(send_msg,
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Content-Length: 18\r\n"
+                    "\r\n"
+                    "Hello from server\n");
+            }
+            if (http_method == "POST") {
+                sprintf(send_msg,
+                    "HTTP/1.1 403 Forbidden\r\n"
+                    "Content-Type: text/plain\r\n"
+                    "Content-Length: 33\r\n"
+                    "\r\n"
+                    "You're not allowed to watch this\n");
+            }
 
             int rv = send(client_fd, send_msg, strlen(send_msg), 0);
             if (rv == -1) {
