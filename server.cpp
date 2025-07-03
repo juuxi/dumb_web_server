@@ -1,4 +1,4 @@
-#include <pthread.h>
+#include <thread>
 #include <signal.h>
 #include <string.h>
 #include <fcntl.h>
@@ -17,11 +17,12 @@ struct sockaddr_in addr;
 struct sockaddr_in addr2;
 pthread_mutex_t mutex;
 pthread_t id1, id2, id3;
+std::thread *t1 = nullptr, *t2 = nullptr;
 std::queue<std::string> q;
 
-void* func1(void* arg) {
+void func1(void* arg) {
     int client_fd = *((int*)arg);
-    free(((int*)arg)); // Free dynamically allocated memory
+    free(((int*)arg));
 
     printf("поток приема начал работу\n");
     while (flag_rcv == 0) {
@@ -41,10 +42,9 @@ void* func1(void* arg) {
     }
     close(client_fd);
     printf("поток приема закончил работу\n");
-    return NULL;
 }
 
-void* func2(void* arg) {
+void func2(void* arg) {
     int client_fd = *((int*)arg);
     printf("поток обработки начал работу\n");
 
@@ -86,10 +86,9 @@ void* func2(void* arg) {
     }
     close(client_fd);
     printf("поток обработки закончил работу\n");
-    return NULL;
 }
 
-void* func3(void*) {
+void func3() {
     printf("поток ожидания соединений начал работу\n");
     while (flag_wait == 0) {
         socklen_t len = sizeof(addr);
@@ -102,12 +101,11 @@ void* func3(void*) {
             *client_fd1 = client_fd;
             *client_fd2 = client_fd;
 
-            pthread_create(&id1, NULL, func1, client_fd1);
-            pthread_create(&id2, NULL, func2, client_fd2);
+            t1 = new std::thread(func1, client_fd1);
+            t2 = new std::thread(func2, client_fd2);
         }
     }
     printf("поток ожидания соединений закончил работу\n");
-    return NULL;
 }
 
 int main() {
@@ -131,16 +129,27 @@ int main() {
 
     listen(listen_sock, 100);
 
-    pthread_create(&id3, NULL, func3, NULL);
+
+    std::thread t3(func3);
     printf("программа ждет нажатия клавиши\n");
     getchar();
     printf("клавиша нажата\n");
     flag_rcv = 1;
     flag_process = 1;
     flag_wait = 1;
-    pthread_join(id1, NULL);
-    pthread_join(id2, NULL);
-    pthread_join(id3, NULL);
+
+    if (t1 && t1->joinable()) { 
+        t1->join();
+        delete t1;
+        t1 = nullptr;
+    }
+    if (t2 && t2->joinable()) { 
+        t2->join();
+        delete t2;
+        t2 = nullptr;
+    }
+
+    t3.join();
 
     close(client_sock);
     close(listen_sock);
